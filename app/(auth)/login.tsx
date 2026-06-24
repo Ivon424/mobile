@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Link, router } from 'expo-router';
+import Svg, { Rect, Circle, Path } from 'react-native-svg';
 import { supabase } from '../../lib/supabase';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
 
@@ -43,7 +44,35 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoEmoji}>✨</Text>
+            <Svg width="48" height="48" viewBox="0 0 48 48">
+              {/* Calendar base */}
+              <Rect x="4" y="10" width="34" height="30" rx="5" fill="white" opacity={0.2}/>
+              <Rect x="4" y="10" width="34" height="30" rx="5" fill="none" stroke="white" strokeWidth="1.5" opacity={0.6}/>
+              {/* Calendar top bar */}
+              <Rect x="4" y="10" width="34" height="10" rx="5" fill="white" opacity={0.3}/>
+              <Rect x="4" y="17" width="34" height="3" fill="white" opacity={0.3}/>
+              {/* Ring hooks */}
+              <Rect x="14" y="6" width="4" height="9" rx="2" fill="white" opacity={0.9}/>
+              <Rect x="26" y="6" width="4" height="9" rx="2" fill="white" opacity={0.9}/>
+              {/* Habit dots row 1 */}
+              <Circle cx="13" cy="27" r="2.5" fill="white" opacity={0.4}/>
+              <Circle cx="21" cy="27" r="2.5" fill="#FFD700" opacity={0.95}/>
+              <Circle cx="29" cy="27" r="2.5" fill="#FFD700" opacity={0.95}/>
+              {/* Habit dots row 2 */}
+              <Circle cx="13" cy="34" r="2.5" fill="#FFD700" opacity={0.95}/>
+              <Circle cx="21" cy="34" r="2.5" fill="#FFD700" opacity={0.95}/>
+              <Circle cx="29" cy="34" r="2.5" fill="white" opacity={0.4}/>
+              {/* Green checkmark badge */}
+              <Circle cx="37" cy="13" r="9" fill="#4CAF50"/>
+              <Path
+                d="M32.5 13 L36 16.5 L41.5 9.5"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
           </View>
           <Text style={styles.title}>HabitFlow</Text>
           <Text style={styles.subtitle}>Build lasting habits, one day at a time</Text>
@@ -138,9 +167,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 8,
-  },
-  logoEmoji: {
-    fontSize: 36,
   },
   title: {
     fontSize: FontSize.xxxl,
