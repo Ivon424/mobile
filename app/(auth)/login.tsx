@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
@@ -37,7 +38,6 @@ export default function LoginScreen() {
   }
 
   async function handleLogin() {
-    // Clear previous errors
     setLoginError('');
 
     const emailErr = validateEmail(email);
@@ -55,7 +55,6 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (error) {
-      // Show specific inline error messages instead of Alert
       if (
         error.message.toLowerCase().includes('invalid login') ||
         error.message.toLowerCase().includes('invalid credentials') ||
@@ -83,7 +82,11 @@ export default function LoginScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>✅</Text>
+          <Image
+            source={require('@/assets/app-logo.jpg')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.appName}>HabitTracker</Text>
           <Text style={styles.tagline}>Build habits that stick</Text>
         </View>
@@ -92,7 +95,6 @@ export default function LoginScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Welcome back</Text>
 
-          {/* Global login error */}
           {loginError ? (
             <View style={styles.errorBox}>
               <Text style={styles.errorBoxText}>⚠️ {loginError}</Text>
@@ -185,7 +187,9 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
   logo: {
-    fontSize: 56,
+    width: 80,
+    height: 80,
+    borderRadius: 18,
     marginBottom: SPACING.sm,
   },
   appName: {
