@@ -1,5 +1,5 @@
 -- =========================================
--- HabitFlow: Supabase Database Schema
+-- HabitTracker: Supabase Database Schema
 -- Run this in your Supabase SQL Editor
 -- =========================================
 

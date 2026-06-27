@@ -74,7 +74,7 @@ export default function LoginScreen() {
               />
             </Svg>
           </View>
-          <Text style={styles.title}>HabitFlow</Text>
+          <Text style={styles.title}>HabitTracker</Text>
           <Text style={styles.subtitle}>Build lasting habits, one day at a time</Text>
         </View>
 

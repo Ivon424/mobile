@@ -1,4 +1,4 @@
-# 📱 HabitFlow — Complete Setup Guide
+# 📱 HabitTracker — Complete Setup Guide
 ## Daily Habit Tracker with Supabase Backend
 
 ---
