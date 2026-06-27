@@ -45,3 +45,8 @@ export const BorderRadius = {
   xl: 24,
   full: 999,
 };
+
+// Aliases for compatibility
+export const COLORS = Colors;
+export const SPACING = Spacing;
+export const FONT_SIZES = FontSize;

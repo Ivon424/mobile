@@ -7,105 +7,144 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
-import { Link, router } from 'expo-router';
-import Svg, { Rect, Circle, Path } from 'react-native-svg';
-import { supabase } from '../../lib/supabase';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
+import { router } from 'expo-router';
+import { supabase } from '@/lib/supabase';
+import { COLORS, SPACING, FONT_SIZES } from '@/constants/theme';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [loginError, setLoginError] = useState('');
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+  function validateEmail(value: string) {
+    if (!value.trim()) return 'Email is required.';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value.trim())) return 'Enter a valid email address.';
+    return '';
+  }
+
+  function validatePassword(value: string) {
+    if (!value) return 'Password is required.';
+    if (value.length < 6) return 'Password must be at least 6 characters.';
+    return '';
+  }
+
+  async function handleLogin() {
+    // Clear previous errors
+    setLoginError('');
+
+    const emailErr = validateEmail(email);
+    const passwordErr = validatePassword(password);
+    setEmailError(emailErr);
+    setPasswordError(passwordErr);
+
+    if (emailErr || passwordErr) return;
+
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
     setLoading(false);
+
     if (error) {
-      Alert.alert('Login Failed', error.message);
-    } else {
-      router.replace('/(tabs)/today');
+      // Show specific inline error messages instead of Alert
+      if (
+        error.message.toLowerCase().includes('invalid login') ||
+        error.message.toLowerCase().includes('invalid credentials') ||
+        error.message.toLowerCase().includes('wrong password')
+      ) {
+        setLoginError('Incorrect email or password. Please try again.');
+      } else if (error.message.toLowerCase().includes('email not confirmed')) {
+        setLoginError('Please confirm your email before logging in.');
+      } else if (error.message.toLowerCase().includes('too many requests')) {
+        setLoginError('Too many attempts. Please wait a moment and try again.');
+      } else {
+        setLoginError(error.message);
+      }
     }
-  };
+  }
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Svg width="48" height="48" viewBox="0 0 48 48">
-              {/* Calendar base */}
-              <Rect x="4" y="10" width="34" height="30" rx="5" fill="white" opacity={0.2}/>
-              <Rect x="4" y="10" width="34" height="30" rx="5" fill="none" stroke="white" strokeWidth="1.5" opacity={0.6}/>
-              {/* Calendar top bar */}
-              <Rect x="4" y="10" width="34" height="10" rx="5" fill="white" opacity={0.3}/>
-              <Rect x="4" y="17" width="34" height="3" fill="white" opacity={0.3}/>
-              {/* Ring hooks */}
-              <Rect x="14" y="6" width="4" height="9" rx="2" fill="white" opacity={0.9}/>
-              <Rect x="26" y="6" width="4" height="9" rx="2" fill="white" opacity={0.9}/>
-              {/* Habit dots row 1 */}
-              <Circle cx="13" cy="27" r="2.5" fill="white" opacity={0.4}/>
-              <Circle cx="21" cy="27" r="2.5" fill="#FFD700" opacity={0.95}/>
-              <Circle cx="29" cy="27" r="2.5" fill="#FFD700" opacity={0.95}/>
-              {/* Habit dots row 2 */}
-              <Circle cx="13" cy="34" r="2.5" fill="#FFD700" opacity={0.95}/>
-              <Circle cx="21" cy="34" r="2.5" fill="#FFD700" opacity={0.95}/>
-              <Circle cx="29" cy="34" r="2.5" fill="white" opacity={0.4}/>
-              {/* Green checkmark badge */}
-              <Circle cx="37" cy="13" r="9" fill="#4CAF50"/>
-              <Path
-                d="M32.5 13 L36 16.5 L41.5 9.5"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </Svg>
-          </View>
-          <Text style={styles.title}>HabitTracker</Text>
-          <Text style={styles.subtitle}>Build lasting habits, one day at a time</Text>
+          <Text style={styles.logo}>✅</Text>
+          <Text style={styles.appName}>HabitTracker</Text>
+          <Text style={styles.tagline}>Build habits that stick</Text>
         </View>
 
-        <View style={styles.form}>
-          <Text style={styles.formTitle}>Welcome back</Text>
+        {/* Form card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Welcome back</Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor={Colors.textMuted}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          {/* Global login error */}
+          {loginError ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorBoxText}>⚠️ {loginError}</Text>
+            </View>
+          ) : null}
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor={Colors.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
+          {/* Email */}
+          <TextInput
+            style={[styles.input, emailError ? styles.inputError : null]}
+            placeholder="Email address"
+            placeholderTextColor={COLORS.textMuted}
+            value={email}
+            onChangeText={(val) => {
+              setEmail(val);
+              setEmailError('');
+              setLoginError('');
+            }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
+          {emailError ? (
+            <Text style={styles.fieldError}>{emailError}</Text>
+          ) : null}
+
+          {/* Password */}
+          <TextInput
+            style={[styles.input, passwordError ? styles.inputError : null]}
+            placeholder="Password"
+            placeholderTextColor={COLORS.textMuted}
+            value={password}
+            onChangeText={(val) => {
+              setPassword(val);
+              setPasswordError('');
+              setLoginError('');
+            }}
+            secureTextEntry
+            returnKeyType="done"
+            onSubmitEditing={handleLogin}
+          />
+          {passwordError ? (
+            <Text style={styles.fieldError}>{passwordError}</Text>
+          ) : null}
+
+          {/* Forgot password */}
+          <TouchableOpacity
+            style={styles.forgotRow}
+            onPress={() => router.push('/(auth)/forgot-password')}
+          >
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -113,25 +152,17 @@ export default function LoginScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color={Colors.white} />
+              <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.buttonText}>Sign In</Text>
             )}
           </TouchableOpacity>
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
           <View style={styles.registerRow}>
             <Text style={styles.registerText}>Don't have an account? </Text>
-            <Link href="/(auth)/register" asChild>
-              <TouchableOpacity>
-                <Text style={styles.registerLink}>Create one</Text>
-              </TouchableOpacity>
-            </Link>
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+              <Text style={styles.registerLink}>Create one</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -142,125 +173,118 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: 80,
-    paddingBottom: 40,
+    justifyContent: 'center',
+    padding: SPACING.lg,
   },
   header: {
     alignItems: 'center',
-    marginBottom: Spacing.xxl,
+    marginBottom: SPACING.xl,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.xl,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
+  logo: {
+    fontSize: 56,
+    marginBottom: SPACING.sm,
   },
-  title: {
-    fontSize: FontSize.xxxl,
+  appName: {
+    fontSize: FONT_SIZES.xxl ?? 28,
     fontWeight: '800',
-    color: Colors.text,
+    color: COLORS.primary,
     letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
-    textAlign: 'center',
+  tagline: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    marginTop: 4,
   },
-  form: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  formTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: Spacing.lg,
-  },
-  inputGroup: {
-    marginBottom: Spacing.md,
-  },
-  label: {
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: Colors.surfaceLight,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-    fontSize: FontSize.md,
-    color: Colors.text,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  button: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    marginTop: Spacing.sm,
-    shadowColor: Colors.primary,
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: SPACING.xl,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
     elevation: 4,
   },
+  cardTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: SPACING.lg,
+  },
+  errorBox: {
+    backgroundColor: '#FF658420',
+    borderWidth: 1,
+    borderColor: '#FF6584',
+    borderRadius: 10,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  errorBoxText: {
+    color: '#FF6584',
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: SPACING.md,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    marginBottom: SPACING.xs,
+  },
+  inputError: {
+    borderColor: '#FF6584',
+  },
+  fieldError: {
+    color: '#FF6584',
+    fontSize: FONT_SIZES.xs,
+    marginBottom: SPACING.sm,
+    marginLeft: SPACING.xs,
+  },
+  forgotRow: {
+    alignSelf: 'flex-end',
+    marginBottom: SPACING.lg,
+    marginTop: SPACING.sm,
+  },
+  forgotText: {
+    color: COLORS.primary,
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+  },
+  button: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    padding: SPACING.md,
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   buttonText: {
-    color: Colors.white,
-    fontSize: FontSize.md,
+    color: '#fff',
+    fontSize: FONT_SIZES.md,
     fontWeight: '700',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: Spacing.lg,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    color: Colors.textMuted,
-    paddingHorizontal: Spacing.sm,
-    fontSize: FontSize.sm,
   },
   registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: SPACING.sm,
   },
   registerText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.md,
+    color: COLORS.textSecondary,
+    fontSize: FONT_SIZES.sm,
   },
   registerLink: {
-    color: Colors.primary,
-    fontSize: FontSize.md,
-    fontWeight: '700',
+    color: COLORS.primary,
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
   },
 });
