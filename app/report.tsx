@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import * as Print from 'expo-print';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -91,21 +91,13 @@ export default function ReportScreen() {
             } else break;
           }
 
-          return `
-            <tr>
-              <td style="padding:12px 16px;border-bottom:1px solid #2D2B45;">${habit.icon} ${habit.name}</td>
-              <td style="padding:12px 16px;border-bottom:1px solid #2D2B45;text-align:center;">${habitLogs.length}</td>
-              <td style="padding:12px 16px;border-bottom:1px solid #2D2B45;text-align:center;">
-                <span style="
-                  background:${rate >= 70 ? '#43D9AD20' : rate >= 40 ? '#FFB54720' : '#FF658420'};
-                  color:${rate >= 70 ? '#43D9AD' : rate >= 40 ? '#FFB547' : '#FF6584'};
-                  padding:3px 10px;border-radius:20px;font-size:13px;font-weight:700;
-                ">${rate}%</span>
-              </td>
-              <td style="padding:12px 16px;border-bottom:1px solid #2D2B45;text-align:center;">🔥 ${streak}</td>
-              <td style="padding:12px 16px;border-bottom:1px solid #2D2B45;text-align:center;">${habit.frequency}</td>
-            </tr>
-          `;
+          return {
+            name: `${habit.icon} ${habit.name}`,
+            completions: habitLogs.length,
+            rate,
+            streak,
+            frequency: habit.frequency,
+          };
         })
       );
 
@@ -117,127 +109,55 @@ export default function ReportScreen() {
         return count > top.count ? { name: `${h.icon} ${h.name}`, count } : top;
       }, { name: 'None', count: 0 });
 
-      // Generate HTML
-      const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HabitTrackerActivity Report</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: 'Inter', sans-serif; background:#0F0E17; color:#FFFFFE; padding:40px; }
-    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:40px; padding-bottom:24px; border-bottom:1px solid #2D2B45; }
-    .brand { display:flex; align-items:center; gap:12px; }
-    .brand-icon { width:48px; height:48px; background:#6C63FF; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; }
-    .brand-name { font-size:24px; font-weight:800; }
-    .report-meta { text-align:right; }
-    .report-label { font-size:12px; color:#A8A6C8; text-transform:uppercase; letter-spacing:1px; }
-    .report-date { font-size:14px; font-weight:600; color:#FFFFFE; margin-top:4px; }
-    .section-title { font-size:18px; font-weight:700; margin-bottom:16px; color:#FFFFFE; }
-    .summary-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:40px; }
-    .summary-card { background:#1A1929; border-radius:16px; padding:20px; border:1px solid #2D2B45; }
-    .summary-num { font-size:32px; font-weight:800; color:#6C63FF; }
-    .summary-lbl { font-size:12px; color:#A8A6C8; margin-top:4px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; }
-    .table-wrapper { background:#1A1929; border-radius:16px; overflow:hidden; border:1px solid #2D2B45; margin-bottom:40px; }
-    table { width:100%; border-collapse:collapse; }
-    th { padding:14px 16px; background:#252438; font-size:12px; font-weight:700; color:#A8A6C8; text-transform:uppercase; letter-spacing:0.5px; text-align:left; }
-    td { font-size:14px; color:#FFFFFE; }
-    .footer { text-align:center; margin-top:40px; padding-top:24px; border-top:1px solid #2D2B45; }
-    .footer p { font-size:12px; color:#6B6994; }
-    .watermark { color:#6C63FF; font-weight:700; }
-    .verified { display:inline-flex; align-items:center; gap:8px; background:#43D9AD15; color:#43D9AD; border:1px solid #43D9AD30; border-radius:20px; padding:6px 16px; font-size:13px; font-weight:700; margin-bottom:32px; }
-    .user-info { background:#1A1929; border-radius:16px; padding:20px; border:1px solid #2D2B45; margin-bottom:40px; display:flex; align-items:center; gap:16px; }
-    .avatar { width:52px; height:52px; background:#6C63FF; border-radius:26px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:white; }
-    .user-name { font-size:18px; font-weight:700; }
-    .user-email { font-size:13px; color:#A8A6C8; margin-top:2px; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="brand">
-      <div class="brand-icon">✨</div>
-      <div>
-        <div class="brand-name">HabitTracker</div>
-        <div style="font-size:13px;color:#A8A6C8;">Activity Report</div>
-      </div>
-    </div>
-    <div class="report-meta">
-      <div class="report-label">Generated On</div>
-      <div class="report-date">${format(new Date(), 'MMMM d, yyyy · h:mm a')}</div>
-      <div class="report-label" style="margin-top:8px;">Report Period</div>
-      <div class="report-date">${rangeLabel}</div>
-    </div>
-  </div>
+      // Generate plain-text report
+      const generatedOn = format(new Date(), 'MMMM d, yyyy \u00b7 h:mm a');
+      const reportId = `HF-${Date.now()}-${user.id.slice(0, 8).toUpperCase()}`;
+      const line = '-'.repeat(40);
 
-  <div class="verified">✓ Verified Activity Log — Auto-generated by HabitTracker</div>
+      const habitLines = habitRows.map((h) =>
+        `\u2022 ${h.name}\n    Completions: ${h.completions}   Rate: ${h.rate}%   Streak: \ud83d\udd25 ${h.streak}   Schedule: ${h.frequency}`
+      ).join('\n\n');
 
-  <div class="user-info">
-    <div class="avatar">${(profile?.full_name || 'U').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}</div>
-    <div>
-      <div class="user-name">${profile?.full_name || 'User'}</div>
-      <div class="user-email">${user.email}</div>
-    </div>
-  </div>
+      const reportText = [
+        'HABITTRACKER \u2014 ACTIVITY REPORT',
+        line,
+        '',
+        `Generated On: ${generatedOn}`,
+        `Report Period: ${rangeLabel}`,
+        '',
+        '\u2713 Verified Activity Log \u2014 Auto-generated by HabitTracker',
+        '',
+        `User: ${profile?.full_name || 'User'}`,
+        `Email: ${user.email}`,
+        '',
+        'SUMMARY',
+        line,
+        `Active Habits: ${totalHabits}`,
+        `Total Completions: ${totalLogs}`,
+        `Avg Per Day: ${avgPerDay}`,
+        `Top Habit: ${topHabit?.name || '\u2014'}`,
+        '',
+        'HABIT PERFORMANCE',
+        line,
+        habitLines || 'No habits tracked yet.',
+        '',
+        line,
+        `Report ID: ${reportId}`,
+        `\u00a9 ${new Date().getFullYear()} HabitTracker \u2014 All data is user-generated and verified against Supabase records.`,
+      ].join('\n');
 
-  <div class="section-title">Summary</div>
-  <div class="summary-grid">
-    <div class="summary-card">
-      <div class="summary-num">${totalHabits}</div>
-      <div class="summary-lbl">Active Habits</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-num" style="color:#43D9AD">${totalLogs}</div>
-      <div class="summary-lbl">Total Completions</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-num" style="color:#FFB547">${avgPerDay}</div>
-      <div class="summary-lbl">Avg Per Day</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-num" style="color:#FF6584">${topHabit?.name || '—'}</div>
-      <div class="summary-lbl">Top Habit</div>
-    </div>
-  </div>
+      const fileName = `HabitTracker_Report_${Date.now()}.txt`;
+      const file = new File(Paths.cache, fileName);
+      file.write(reportText);
 
-  <div class="section-title">Habit Performance</div>
-  <div class="table-wrapper">
-    <table>
-      <thead>
-        <tr>
-          <th>Habit</th>
-          <th style="text-align:center;">Completions</th>
-          <th style="text-align:center;">Rate</th>
-          <th style="text-align:center;">Streak</th>
-          <th style="text-align:center;">Schedule</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${habitRows.join('')}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="footer">
-    <p>This report was automatically compiled by <span class="watermark">HabitTracker</span></p>
-    <p style="margin-top:4px;">Report ID: HF-${Date.now()} · ${user.id.slice(0, 8).toUpperCase()}</p>
-    <p style="margin-top:8px;">© ${new Date().getFullYear()} HabitTracker — All data is user-generated and verified against Supabase records.</p>
-  </div>
-</body>
-</html>
-      `;
-
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'text/plain',
           dialogTitle: 'Share your HabitTracker Report',
         });
       } else {
-        Alert.alert('PDF Generated', `Saved to: ${uri}`);
+        Alert.alert('Report Generated', `Saved to: ${file.uri}`);
       }
     } catch (err) {
       console.error('Report error:', err);
@@ -262,7 +182,7 @@ export default function ReportScreen() {
           <Text style={styles.iconBannerEmoji}>📄</Text>
           <Text style={styles.iconBannerTitle}>Generate Your Report</Text>
           <Text style={styles.iconBannerSub}>
-            Export a verified PDF activity log with habit performance, streaks, and completion rates.
+            Export a verified text activity log with habit performance, streaks, and completion rates.
           </Text>
         </View>
 
@@ -313,10 +233,10 @@ export default function ReportScreen() {
           {loading ? (
             <View style={styles.generateBtnInner}>
               <ActivityIndicator color={Colors.background} />
-              <Text style={styles.generateBtnText}>Generating PDF...</Text>
+              <Text style={styles.generateBtnText}>Generating Report...</Text>
             </View>
           ) : (
-            <Text style={styles.generateBtnText}>📥 Download PDF Report</Text>
+            <Text style={styles.generateBtnText}>📥 Download Text Report</Text>
           )}
         </TouchableOpacity>
 

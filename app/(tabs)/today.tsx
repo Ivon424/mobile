@@ -46,8 +46,9 @@ export default function TodayScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<{ full_name: string } | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
+  const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
 
   const fetchData = async () => {
     if (!user) return;
@@ -69,13 +70,13 @@ export default function TodayScreen() {
 
       if (error) throw error;
 
-      // Fetch today's logs
+      // Fetch selected day's logs
       const { data: logsData } = await supabase
         .from('habit_logs')
         .select('*')
         .eq('user_id', user.id)
-        .gte('completed_at', todayStr + 'T00:00:00')
-        .lte('completed_at', todayStr + 'T23:59:59');
+        .gte('completed_at', selectedDateStr + 'T00:00:00')
+        .lte('completed_at', selectedDateStr + 'T23:59:59');
 
       // Calculate streaks and merge
       const habitsWithStatus: HabitWithStatus[] = await Promise.all(
@@ -129,7 +130,7 @@ export default function TodayScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchData();
-    }, [user])
+    }, [user, selectedDate])
   );
 
   const toggleHabit = async (habit: HabitWithStatus) => {
@@ -142,30 +143,26 @@ export default function TodayScreen() {
         .delete()
         .eq('id', habit.log_id);
       if (!error) {
-        setHabits((prev) =>
-          prev.map((h) =>
-            h.id === habit.id ? { ...h, completed: false, log_id: undefined, streak: Math.max(0, h.streak - 1) } : h
-          )
-        );
+        fetchData();
       }
     } else {
-      // Mark complete
-      const { data, error } = await supabase
+      // Mark complete on the selected date, keeping the current time of day
+      const completedAt = new Date(selectedDate);
+      const now = new Date();
+      completedAt.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+
+      const { error } = await supabase
         .from('habit_logs')
         .insert({
           habit_id: habit.id,
           user_id: user.id,
-          completed_at: new Date().toISOString(),
+          completed_at: completedAt.toISOString(),
           notes: '',
         })
         .select()
         .single();
-      if (!error && data) {
-        setHabits((prev) =>
-          prev.map((h) =>
-            h.id === habit.id ? { ...h, completed: true, log_id: data.id, streak: h.streak + 1 } : h
-          )
-        );
+      if (!error) {
+        fetchData();
       }
     }
   };
@@ -238,20 +235,22 @@ export default function TodayScreen() {
         {[-3, -2, -1, 0, 1, 2, 3].map((offset) => {
           const date = new Date();
           date.setDate(today.getDate() + offset);
-          const isCurrentDay = offset === 0;
+          const isSelectedDay = format(date, 'yyyy-MM-dd') === selectedDateStr;
           return (
-            <View
+            <TouchableOpacity
               key={offset}
-              style={[styles.dateItem, isCurrentDay && styles.dateItemActive]}
+              style={[styles.dateItem, isSelectedDay && styles.dateItemActive]}
+              onPress={() => setSelectedDate(date)}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.dateDayLabel, isCurrentDay && styles.dateDayLabelActive]}>
+              <Text style={[styles.dateDayLabel, isSelectedDay && styles.dateDayLabelActive]}>
                 {DAYS[date.getDay()]}
               </Text>
-              <Text style={[styles.dateNumber, isCurrentDay && styles.dateNumberActive]}>
+              <Text style={[styles.dateNumber, isSelectedDay && styles.dateNumberActive]}>
                 {date.getDate()}
               </Text>
-              {isCurrentDay && <View style={styles.dateDot} />}
-            </View>
+              {isSelectedDay && <View style={styles.dateDot} />}
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -259,7 +258,9 @@ export default function TodayScreen() {
       {/* Progress card */}
       <View style={styles.progressCard}>
         <View style={styles.progressHeader}>
-          <Text style={styles.progressTitle}>Today's Progress</Text>
+          <Text style={styles.progressTitle}>
+            {isToday(selectedDate) ? "Today's Progress" : `${format(selectedDate, 'MMM d')} Progress`}
+          </Text>
           <Text style={styles.progressPct}>{completionPct}%</Text>
         </View>
         <View style={styles.progressBar}>
@@ -272,7 +273,7 @@ export default function TodayScreen() {
 
       {/* Habits list */}
       <Text style={styles.sectionTitle}>
-        {format(today, 'EEEE, MMMM d')}
+        {format(selectedDate, 'EEEE, MMMM d')}
       </Text>
 
       {habits.length === 0 ? (
